@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Outfit', system-ui, sans-serif;
+  /* Degradado dinámico y premium */
+  background: linear-gradient(-45deg, #ffe4e6, #f3e8ff, #ccfbf1, #e0e7ff);
+  background-size: 400% 400%;
+  animation: gradientBG 15s ease infinite;
+  min-height: 100vh;
+  overflow-x: hidden;
+  color: #334155;
+}
+
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Scrollbar estilizada y discreta */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+  background-color: rgba(0, 0, 0, 0.1); 
+  border-radius: 10px; 
+}
+
+/* Patrón de puntos para el dorso de las cartas de baraja */
+.card-pattern {
+  background-image: radial-gradient(circle at 2px 2px, rgba(255, 255, 255, 0.5) 1px, transparent 0);
+  background-size: 16px 16px;
+}
