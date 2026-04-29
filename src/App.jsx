@@ -1,57 +1,78 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
-import { CATEGORIES, INITIAL_TASKS } from './data';
+import { supabase } from './supabaseClient';
+import { CATEGORIES } from './data';
 import KanbanColumn from './components/KanbanColumn';
 import ConfirmDeleteModal from './components/ConfirmDeleteModal';
-import AddModal from './components/AddModal'; // Asegúrate de que el archivo se llame así
+import AddModal from './components/AddModal';
 
 export default function App() {
-  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const [tasks, setTasks] = useState([]);
   const [deleteCandidate, setDeleteCandidate] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [activeCategoryId, setActiveCategoryId] = useState(null);
 
-  const handleOpenAddModal = (categoryId) => {
-    setActiveCategoryId(categoryId);
-    setIsAddModalOpen(true);
-  };
-
-  const confirmAddTask = (text) => {
-    const newTask = {
-      id: Date.now(),
-      text: text,
-      category: activeCategoryId,
-      isFlipped: false
+  // 1. CARGAR DATOS Y ESCUCHAR CAMBIOS (REALTIME)
+  useEffect(() => {
+    const fetchTasks = async () => {
+      const { data } = await supabase.from('tasks').select('*').order('created_at', { ascending: true });
+      if (data) setTasks(data);
     };
-    setTasks(prev => [...prev, newTask]);
+
+    fetchTasks();
+
+    // Suscripción Realtime: Actualiza la web de los dos al segundo
+    const channel = supabase
+      .channel('tasks-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+        fetchTasks();
+      })
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, []);
+
+  // 2. FUNCIONES DE ACCIÓN (CONECTADAS A LA NUBE)
+  const confirmAddTask = async (text) => {
+    await supabase.from('tasks').insert([{ 
+      text, 
+      category: activeCategoryId, 
+      isFlipped: false 
+    }]);
+    setIsAddModalOpen(false);
   };
 
-  const handleComplete = (taskToComplete) => {
+  const handleFlip = async (id) => {
+    await supabase.from('tasks').update({ isFlipped: true }).eq('id', id);
+  };
+
+  const handleUnflip = async (id) => {
+    await supabase.from('tasks').update({ isFlipped: false }).eq('id', id);
+  };
+
+  const handleComplete = async (taskToComplete) => {
     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-    setTasks(prev => prev.map(t => 
-      t.id === taskToComplete.id ? { ...t, category: '🏆', isFlipped: true } : t
-    ));
+    // Según la regla: "Lo que se acaba se mueve al archivo, no se borra"[cite: 2]
+    await supabase.from('tasks').update({ category: '🏆', isFlipped: true }).eq('id', taskToComplete.id);
   };
 
-  const handleFlip = (id) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, isFlipped: true } : t));
-  };
-
-  const handleUnflip = (id) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, isFlipped: false } : t));
-  };
-
-  const handleDeleteRequest = (id) => setDeleteCandidate(id);
-  
-  const confirmDelete = () => {
-    setTasks(prev => prev.filter(t => t.id !== deleteCandidate));
+  const confirmDelete = async () => {
+    await supabase.from('tasks').delete().eq('id', deleteCandidate);
     setDeleteCandidate(null);
   };
 
-  const handleEdit = (id) => {
+  const handleEdit = async (id) => {
     const taskToEdit = tasks.find(t => t.id === id);
     const newText = prompt("Edita el texto:", taskToEdit.text);
-    if (newText) setTasks(prev => prev.map(t => t.id === id ? { ...t, text: newText } : t));
+    if (newText) {
+      await supabase.from('tasks').update({ text: newText }).eq('id', id);
+    }
+  };
+
+  // 3. LOGICA AUXILIAR
+  const handleOpenAddModal = (categoryId) => {
+    setActiveCategoryId(categoryId);
+    setIsAddModalOpen(true);
   };
 
   const pickRandom = (categoryId) => {
@@ -61,14 +82,12 @@ export default function App() {
     handleFlip(randomTask.id);
   };
 
-  // Buscamos el nombre de la categoría activa de forma segura
-  const activeCategoryObj = Object.values(CATEGORIES).find(c => c.id === activeCategoryId);
-  const activeCategoryName = activeCategoryObj ? activeCategoryObj.name : "";
+  const activeCategoryName = Object.values(CATEGORIES).find(c => c.id === activeCategoryId)?.name || "";
 
   return (
     <div className="min-h-screen p-6 md:p-10">
       <h1 className="text-4xl md:text-5xl font-extrabold text-center mb-12 tracking-tight">
-        <span className="bg-clip-text text-transparent bg-gradient-to-r from-rose-500 via-purple-500 to-teal-500">
+        <span className="bg-clip-text text-transparent bg-gradient-to-r from-rose-500 via-purple-500 to-teal-500 drop-shadow-sm">
           ✨ Nuestro Dashboard
         </span>
       </h1>
@@ -80,7 +99,7 @@ export default function App() {
             category={cat} 
             tasks={tasks}
             onComplete={handleComplete}
-            onDeleteRequest={handleDeleteRequest}
+            onDeleteRequest={setDeleteCandidate}
             onEdit={handleEdit}
             onFlip={handleFlip}
             onUnflip={handleUnflip}
@@ -98,7 +117,10 @@ export default function App() {
       />
 
       {deleteCandidate && (
-        <ConfirmDeleteModal onConfirm={confirmDelete} onCancel={() => setDeleteCandidate(null)} />
+        <ConfirmDeleteModal 
+          onConfirm={confirmDelete} 
+          onCancel={() => setDeleteCandidate(null)} 
+        />
       )}
     </div>
   );
