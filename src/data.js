@@ -7,7 +7,7 @@ export const CATEGORIES = {
   pelis: { id: '🎬', name: 'Pelis', type: 'normal' },
   cocina: { id: '👩🏼‍🍳', name: 'Cocina', type: 'normal' },
   planes: { id: '🌟', name: 'Planes', type: 'mystery' },
-  rutas: { id: '🏎️', name: 'Rutas en coche', type: 'normal' },
+  rutas: { id: '🏎️', name: 'Viajes', type: 'normal' },
   recuerdos: { id: '🏆', name: 'Recuerdos', type: 'normal' } 
 };
 
