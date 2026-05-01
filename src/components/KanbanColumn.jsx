@@ -6,7 +6,6 @@ export default function KanbanColumn({ category, tasks, onComplete, onDeleteRequ
   const hasUnflipped = colTasks.some(t => !t.isFlipped);
 
   return (
-    /* He cambiado h-[75vh] por h-[85vh] para ganar espacio hacia abajo */
     <div className="min-w-[320px] w-[320px] h-[85vh] flex-shrink-0 bg-white/40 backdrop-blur-md rounded-3xl p-5 border border-white/50 shadow-xl snap-center flex flex-col">
       
       <div className="flex justify-between items-center mb-5 pb-3 border-b border-white/40">
@@ -29,7 +28,7 @@ export default function KanbanColumn({ category, tasks, onComplete, onDeleteRequ
         </div>
       </div>
       
-      {/* El div de abajo ya tiene 'overflow-y-auto', lo que permite el scroll si hay muchas tareas */}
+      {/* Contenedor con scroll: min-h-0 es vital aquí */}
       <div className="flex flex-col flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0">
         {colTasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-slate-400/80 italic gap-3">
@@ -38,16 +37,22 @@ export default function KanbanColumn({ category, tasks, onComplete, onDeleteRequ
           </div>
         ) : (
           colTasks.map(task => (
-            <MysteryCard 
-              key={task.id} 
-              task={task} 
-              categoryType={category.type}
-              onComplete={onComplete} 
-              onDeleteRequest={onDeleteRequest}
-              onEdit={onEdit} 
-              onFlip={onFlip}
-              onUnflip={onUnflip}
-            />
+            /* 
+               AQUÍ ESTÁ EL TRUCO: 
+               Envolvemos la tarjeta en un div con 'flex-shrink-0' 
+               para que no se aplaste cuando haya muchas.
+            */
+            <div key={task.id} className="flex-shrink-0 w-full mb-4">
+              <MysteryCard 
+                task={task} 
+                categoryType={category.type}
+                onComplete={onComplete} 
+                onDeleteRequest={onDeleteRequest}
+                onEdit={onEdit} 
+                onFlip={onFlip}
+                onUnflip={onUnflip}
+              />
+            </div>
           ))
         )}
       </div>
